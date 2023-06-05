@@ -1,12 +1,19 @@
 import { expect, should } from "chai";
 import { ContractFactory } from "ethers";
 import { ethers } from "hardhat";
-import { Lottery, LotteryToken, Lottery__factory } from "../typechain-types";
+import {
+  Lottery,
+  LotteryToken,
+  LotteryToken__factory,
+  Lottery__factory,
+} from "../typechain-types";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Block } from "@ethersproject/providers";
+import { parseEther } from "ethers/lib/utils";
 
 describe("Lottery Dapp", async () => {
   const TOKEN_RATIO = 1;
+  const MINT_AMOUNT = 2;
   const BET_PRICE = 0.8;
   const BET_FEE = 0.2;
 
@@ -25,6 +32,9 @@ describe("Lottery Dapp", async () => {
       ethers.utils.parseEther(BET_PRICE.toFixed(18)),
       ethers.utils.parseEther(BET_FEE.toFixed(18))
     );
+
+    const tokenAddress = await contract.paymentToken();
+    token = LotteryToken__factory.connect(tokenAddress, accounts[0]);
   });
 
   describe("development", function () {
@@ -67,7 +77,19 @@ describe("Lottery Dapp", async () => {
     });
 
     describe("Purchase Tokens", function () {
-      it("purchase token", async () => {});
+      it("Mints the correct amount of tokens", async () => {
+        await contract.purchaseTokens({ value: ethers.utils.parseEther("2") });
+        let tokenBalance = await token.balanceOf(accounts[0].address);
+        const expectedTokens = MINT_AMOUNT * TOKEN_RATIO;
+        expect(tokenBalance).to.be.eq(
+          ethers.utils.parseUnits(expectedTokens.toString())
+        );
+      });
+    });
+    it("Requires ETH as form of payment", async () => {
+      await expect(contract.purchaseTokens()).to.be.revertedWith(
+        "Ether is required to purchase tokens, try again by providing Ether"
+      );
     });
 
     it("bet", async () => {});
@@ -78,49 +100,49 @@ describe("Lottery Dapp", async () => {
     it("ownerWithdraw", async () => {});
     it("returnTokens", async () => {});
   });
+});
 
-  describe("deployment", function () {
-    it("Should Implement ownable", async () => {
-      // transferOwnership / renounceOwnership
+describe("deployment", function () {
+  it("Should Implement ownable", async () => {
+    // transferOwnership / renounceOwnership
+    throw new Error("Not implemented");
+  });
+  it("Should Only Allow The Owner To deploy lottery and define betting price and fee", async () => {
+    //'Ownable: caller is not the owner',
+    throw new Error("Not implemented");
+  });
+  it("Should Require That Only Owner start lottery", async () => {
+    // "Ownable: caller is not the owner",
+    it("Should require a block timestamp target", async () => {
       throw new Error("Not implemented");
-    });
-    it("Should Only Allow The Owner To deploy lottery and define betting price and fee", async () => {
-      //'Ownable: caller is not the owner',
-      throw new Error("Not implemented");
-    });
-    it("Should Require That Only Owner start lottery", async () => {
-      // "Ownable: caller is not the owner",
-      it("Should require a block timestamp target", async () => {
-        throw new Error("Not implemented");
-      });
     });
   });
+});
 
-  describe("Outside Of Betting Window", function () {
-    it("Players must buy an ERC20 with ETH", async () => {
+describe("Outside Of Betting Window", function () {
+  it("Players must buy an ERC20 with ETH", async () => {
+    throw new Error("Not implemented");
+  });
+  it("Players pay ERC20 to bet", async () => {
+    it("Only possible before block timestamp met", async () => {
       throw new Error("Not implemented");
-    });
-    it("Players pay ERC20 to bet", async () => {
-      it("Only possible before block timestamp met", async () => {
-        throw new Error("Not implemented");
-      });
-    });
-    it("Anyone can roll the lottery", async () => {
-      it("Only after block timestamp target is met", async () => {});
-      it("Randomness from RANDAO", async () => {});
     });
   });
+  it("Anyone can roll the lottery", async () => {
+    it("Only after block timestamp target is met", async () => {});
+    it("Randomness from RANDAO", async () => {});
+  });
+});
 
-  describe("During Betting Window", function () {});
-  describe("After Completion of Lottery", function () {
-    it("Winner receives the pooled ERC20 minus fee", async () => {
-      throw new Error("Not implemented");
-    });
-    it("Owner can withdraw fees and restart lottery", async () => {
-      throw new Error("Not implemented");
-    });
-    it("Players can burn ERC20 tokens and redeem ETH", async () => {
-      throw new Error("Not implemented");
-    });
+describe("During Betting Window", function () {});
+describe("After Completion of Lottery", function () {
+  it("Winner receives the pooled ERC20 minus fee", async () => {
+    throw new Error("Not implemented");
+  });
+  it("Owner can withdraw fees and restart lottery", async () => {
+    throw new Error("Not implemented");
+  });
+  it("Players can burn ERC20 tokens and redeem ETH", async () => {
+    throw new Error("Not implemented");
   });
 });

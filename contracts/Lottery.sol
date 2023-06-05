@@ -4,6 +4,12 @@ pragma solidity ^0.8.18;
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {LotteryToken} from "./LotteryToken.sol";
 
+/// @title Lottery
+/// @author F Hersi
+/// @notice You can use this for a running a simple Lottery
+/// @dev uses a simple Random function implementation of Randao.
+/// @custom:bootcamp This was created as part of the Encode Solidity Bootcamp
+
 contract Lottery is Ownable {
     /// @notice Address of the ERC20 token used for payments
     LotteryToken public paymentToken;
@@ -60,6 +66,8 @@ contract Lottery is Ownable {
         _;
     }
 
+    /// @notice starts a Lottery to begin receiving bets.
+    /// @param _targetEndTime the timestamp of when the lottery will end.
     function openBets(
         uint256 _targetEndTime
     ) external onlyOwner whenBetsClosed {
@@ -69,5 +77,17 @@ contract Lottery is Ownable {
         );
         betsClosingTime = _targetEndTime;
         betsOpen = true;
+    }
+
+    /// @notice purchases LotteryToken for placing bets in lottery
+    /// @dev mints from the token contract passed in the constructor.
+
+    function purchaseTokens() external payable {
+        require(
+            msg.value > 0,
+            "Ether is required to purchase tokens, try again by providing Ether"
+        );
+        uint256 _amount = msg.value * tokenRatio;
+        paymentToken.mint(msg.sender, _amount);
     }
 }
