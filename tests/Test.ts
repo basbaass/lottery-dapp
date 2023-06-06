@@ -29,8 +29,8 @@ describe("Lottery Dapp", async () => {
       "Lottery Token",
       "LT0",
       TOKEN_RATIO,
-      ethers.utils.parseEther(BET_PRICE.toFixed(18)),
-      ethers.utils.parseEther(BET_FEE.toFixed(18))
+      ethers.utils.parseEther(BET_PRICE.toString()),
+      ethers.utils.parseEther(BET_FEE.toString())
     );
 
     const tokenAddress = await contract.paymentToken();
@@ -41,7 +41,7 @@ describe("Lottery Dapp", async () => {
     beforeEach(async () => {
       currentTimestamp = (await ethers.provider.getBlock("latest")).timestamp;
     });
-    describe("open bets", async () => {
+    describe("openBets", async () => {
       it("ensures that only owner can open bets", async () => {
         await expect(
           contract
@@ -76,7 +76,7 @@ describe("Lottery Dapp", async () => {
       });
     });
 
-    describe("Purchase Tokens", function () {
+    describe("purchaseTokens", function () {
       it("Mints the correct amount of tokens", async () => {
         await contract.purchaseTokens({ value: ethers.utils.parseEther("2") });
         let tokenBalance = await token.balanceOf(accounts[0].address);
@@ -85,15 +85,66 @@ describe("Lottery Dapp", async () => {
           ethers.utils.parseUnits(expectedTokens.toString())
         );
       });
-    });
-    it("Requires ETH as form of payment", async () => {
-      await expect(contract.purchaseTokens()).to.be.revertedWith(
-        "Ether is required to purchase tokens, try again by providing Ether"
-      );
+      it("Requires ETH as form of payment", async () => {
+        await expect(contract.purchaseTokens()).to.be.revertedWith(
+          "Ether is required to purchase tokens, try again by providing Ether"
+        );
+      });
     });
 
-    it("bet", async () => {});
-    it("Bet many", async () => {});
+    describe("bet", () => {
+      beforeEach(async () => {
+        currentTimestamp = (await ethers.provider.getBlock("latest")).timestamp;
+        await contract.openBets(currentTimestamp + Number(1 * 60));
+        await contract.purchaseTokens({ value: ethers.utils.parseEther("10") });
+      });
+      it("places a bet", async () => {
+        let betsLength = await contract.getArraySize();
+        await contract.bet();
+
+        expect(await contract.getArraySize()).to.be.eq(betsLength.add("1"));
+      });
+
+      it("requires sufficient LotteryToken balance to place a bet", async () => {
+        const LotteryInstance = contract.connect(accounts[1]);
+        await expect(LotteryInstance.bet()).to.be.revertedWith(
+          "Purchase tokens to bet in the lottery"
+        );
+      });
+
+      it("adds your bet to the list of participants", async () => {
+        await contract.bet();
+        let betsLength = await contract.getArraySize();
+
+        expect(await contract._slots(betsLength.toNumber() - 1)).to.be.eq(
+          accounts[0].address
+        );
+      });
+
+      it("increments prizePool", async () => {
+        const prizePoolBeforeBet = await contract.prizePool();
+        const expectedPrizePoolAfterBet = prizePoolBeforeBet.add(
+          ethers.utils.parseEther(BET_PRICE.toString())
+        );
+        await contract.bet();
+        const prizePoolAfterBet = await contract.prizePool();
+        expect(prizePoolAfterBet).to.be.eq(expectedPrizePoolAfterBet);
+      });
+
+      it("increments ownerPool", async () => {
+        const ownerPoolBeforeBet = await contract.ownerPool();
+        const expectedOwnerPoolAfterBet = ownerPoolBeforeBet.add(
+          ethers.utils.parseEther(BET_FEE.toString())
+        );
+        await contract.bet();
+        const ownerPoolAfterBet = await contract.ownerPool();
+        expect(ownerPoolAfterBet).to.be.eq(expectedOwnerPoolAfterBet);
+      });
+    });
+    describe("betMany", () => {
+      it("Bet many", async () => {});
+    });
+
     it("closeLottery", async () => {});
     it("getRando", async () => {});
     it("prize withdraw??", async () => {});

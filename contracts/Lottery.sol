@@ -5,7 +5,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {LotteryToken} from "./LotteryToken.sol";
 
 /// @title Lottery
-/// @author F Hersi
+/// @author F H
 /// @notice You can use this for a running a simple Lottery
 /// @dev uses a simple Random function implementation of Randao.
 /// @custom:bootcamp This was created as part of the Encode Solidity Bootcamp
@@ -20,21 +20,21 @@ contract Lottery is Ownable {
     /// @notice Ratio determining the ration of LotteryTokens to Eth
     uint256 tokenRatio;
     /// @notice the cost of each bet - paid to the prizePool
-    uint256 betPrice;
+    uint256 public betPrice;
     /// @notice the fee associated with each bet - paid to the ownerPool;
-    uint256 betFee;
+    uint256 public betFee;
     /// @notice the total amount winnable for the current lottery
-    uint256 prizePool;
+    uint256 public prizePool;
     /// @notice the total fees collected from each betFee
-    uint256 ownerPool;
+    uint256 public ownerPool;
 
     /// @notice mapping of each winners address and prizeAmount.
     /// @dev allows further lotterys to run without state being cleared.
-    mapping(address => uint256) winnersPool;
+    mapping(address => uint256) public winnersPool;
 
     /// @notice Array of participants in current running lottery.
     /// @dev This is wiped after each lottery ends.
-    address[] _slots;
+    address[] public _slots;
 
     constructor(
         string memory tokenName,
@@ -89,5 +89,19 @@ contract Lottery is Ownable {
         );
         uint256 _amount = msg.value * tokenRatio;
         paymentToken.mint(msg.sender, _amount);
+    }
+
+    function bet() public whenBetsOpen {
+        require(
+            paymentToken.balanceOf(msg.sender) >= betFee + betPrice,
+            "Purchase tokens to bet in the lottery"
+        );
+        ownerPool += betFee;
+        prizePool += betPrice;
+        _slots.push(msg.sender);
+    }
+
+    function getArraySize() public view onlyOwner returns (uint256) {
+        return _slots.length;
     }
 }
