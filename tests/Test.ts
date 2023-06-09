@@ -119,15 +119,6 @@ describe("Lottery Dapp", async () => {
         );
       });
 
-      it("adds your bet to the list of participants", async () => {
-        await contract.bet();
-        let betsLength = await contract.getArraySize();
-
-        expect(await contract._slots(betsLength.toNumber() - 1)).to.be.eq(
-          accounts[0].address
-        );
-      });
-
       it("increments prizePool", async () => {
         const prizePoolBeforeBet = await contract.prizePool();
         const expectedPrizePoolAfterBet = prizePoolBeforeBet.add(
@@ -166,28 +157,80 @@ describe("Lottery Dapp", async () => {
       });
     });
 
-    it("closeLottery", async () => {});
-    it("getRando", async () => {});
-    it("prize withdraw??", async () => {});
+    describe("Close lottery", () => {
+      beforeEach(async () => {
+        currentTimestamp = (await ethers.provider.getBlock("latest")).timestamp;
+        await contract.openBets(currentTimestamp + Number(10));
+        await contract
+          .connect(accounts[0])
+          .purchaseTokens({ value: ethers.utils.parseEther("10") });
+      });
+
+      it("closes the lottery", async () => {
+        await mine(10);
+        await contract.closeLottery();
+
+        expect(await contract.betsOpen()).to.be.false;
+      });
+
+      it("fails if trying to close lottery too early", async () => {
+        await expect(contract.closeLottery()).to.be.revertedWith(
+          "Too early to close lottery"
+        );
+      });
+
+      it("it fails when there is no running lottery", async () => {
+        await mine(10);
+        await contract.closeLottery();
+        await expect(contract.closeLottery()).to.be.revertedWith(
+          "Already closed"
+        );
+      });
+
+      it("resets the state variables", async () => {
+        await mine(10);
+        await contract.closeLottery();
+
+        expect(await contract.prizePool()).to.be.eq(0);
+        expect(await contract.getArraySize()).to.be.eq(0);
+      });
+    });
+
+    describe("withdrawing prize money", () => {
+      beforeEach(async () => {
+        currentTimestamp = (await ethers.provider.getBlock("latest")).timestamp;
+        await contract.openBets(currentTimestamp + Number(10));
+        await contract
+          .connect(accounts[0])
+          .purchaseTokens({ value: ethers.utils.parseEther("10") });
+        await token
+          .connect(accounts[0])
+          .approve(contract.address, ethers.constants.MaxUint256);
+
+        await contract.bet();
+        await mine(100);
+
+        await contract.closeLottery();
+      });
+      it("successfully withdraws prize money", async () => {
+        let balanceBefore = await token.balanceOf(accounts[0].address);
+        await contract.winnerWithdraw();
+
+        expect(await token.balanceOf(accounts[0].address)).to.be.eq(
+          balanceBefore.add(ethers.utils.parseEther(BET_PRICE.toString()))
+        );
+      });
+
+      it("restricts withdrawl to only winners", async () => {
+        let lottery = await contract.connect(accounts[1]);
+
+        await expect(lottery.winnerWithdraw()).to.be.revertedWith(
+          "Only a winner can withdraw funds."
+        );
+      });
+    });
     it("ownerWithdraw", async () => {});
     it("returnTokens", async () => {});
-  });
-});
-
-describe("deployment", function () {
-  it("Should Implement ownable", async () => {
-    // transferOwnership / renounceOwnership
-    throw new Error("Not implemented");
-  });
-  it("Should Only Allow The Owner To deploy lottery and define betting price and fee", async () => {
-    //'Ownable: caller is not the owner',
-    throw new Error("Not implemented");
-  });
-  it("Should Require That Only Owner start lottery", async () => {
-    // "Ownable: caller is not the owner",
-    it("Should require a block timestamp target", async () => {
-      throw new Error("Not implemented");
-    });
   });
 });
 

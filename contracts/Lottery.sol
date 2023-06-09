@@ -34,7 +34,7 @@ contract Lottery is Ownable {
 
     /// @notice Array of participants in current running lottery.
     /// @dev This is wiped after each lottery ends.
-    address[] public _slots;
+    address[] private _slots;
 
     constructor(
         string memory tokenName,
@@ -102,7 +102,6 @@ contract Lottery is Ownable {
         prizePool += betPrice;
         _slots.push(msg.sender);
 
-        paymentToken.approve(address(this), betFee + betPrice);
         paymentToken.transferFrom(msg.sender, address(this), betFee + betPrice);
         //paymentToken.transfer(address(this), betPrice + betFee);
     }
@@ -122,6 +121,46 @@ contract Lottery is Ownable {
         }
     }
 
+    /// @notice Closes lottery
+    /// @dev wipes variables and transfers prize money to winners pool.
+    function closeLottery() external returns (address) {
+        require(
+            block.timestamp >= betsClosingTime,
+            "Too early to close lottery"
+        );
+        address winner;
+        require(betsOpen, "Already closed");
+        if (_slots.length > 0) {
+            uint256 winnerIndex = randomNumber() % _slots.length;
+            winner = _slots[winnerIndex];
+            winnersPool[winner] = prizePool;
+            prizePool = 0;
+            delete _slots;
+        }
+
+        betsOpen = false;
+        return winner;
+    }
+
+    /// @notice withdraws prize money from contract
+    function winnerWithdraw() external {
+        require(
+            winnersPool[msg.sender] > 0,
+            "Only a winner can withdraw funds."
+        );
+        uint256 prize = winnersPool[msg.sender];
+        winnersPool[msg.sender] = 0;
+        paymentToken.transfer(msg.sender, prize);
+    }
+
+    /// @notice returns random number
+    /// @dev impletents pseudorandom function. would be better to use chainlink vrf
+    function randomNumber() internal view returns (uint256) {
+        return block.prevrandao;
+    }
+
+    /// @notice returns array length
+    /// @dev allows the array to remain private;
     function getArraySize() public view onlyOwner returns (uint256) {
         return _slots.length;
     }
