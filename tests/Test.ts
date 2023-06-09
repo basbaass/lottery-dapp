@@ -8,6 +8,7 @@ import {
   Lottery__factory,
 } from "../typechain-types";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { mine } from "@nomicfoundation/hardhat-network-helpers";
 import { Block } from "@ethersproject/providers";
 import { parseEther } from "ethers/lib/utils";
 
@@ -96,10 +97,16 @@ describe("Lottery Dapp", async () => {
       beforeEach(async () => {
         currentTimestamp = (await ethers.provider.getBlock("latest")).timestamp;
         await contract.openBets(currentTimestamp + Number(1 * 60));
-        await contract.purchaseTokens({ value: ethers.utils.parseEther("10") });
+        await contract
+          .connect(accounts[0])
+          .purchaseTokens({ value: ethers.utils.parseEther("10") });
+        await token
+          .connect(accounts[0])
+          .approve(contract.address, ethers.constants.MaxUint256);
       });
       it("places a bet", async () => {
         let betsLength = await contract.getArraySize();
+
         await contract.bet();
 
         expect(await contract.getArraySize()).to.be.eq(betsLength.add("1"));
@@ -140,9 +147,23 @@ describe("Lottery Dapp", async () => {
         const ownerPoolAfterBet = await contract.ownerPool();
         expect(ownerPoolAfterBet).to.be.eq(expectedOwnerPoolAfterBet);
       });
-    });
-    describe("betMany", () => {
-      it("Bet many", async () => {});
+
+      describe("betMany", () => {
+        it("Bet many", async () => {
+          let betsToSimulate = 5;
+          let noOfBetsPriorToBetting = await contract.getArraySize();
+          await contract.betMany(betsToSimulate);
+          expect(await contract.getArraySize()).to.be.eq(
+            noOfBetsPriorToBetting.add(betsToSimulate)
+          );
+        });
+        it("fails if not enough tokens", async () => {
+          let betsToSimulate = 1;
+          expect(await contract.betMany(betsToSimulate)).to.be.revertedWith(
+            "Insufficient balance to place that many bets"
+          );
+        });
+      });
     });
 
     it("closeLottery", async () => {});

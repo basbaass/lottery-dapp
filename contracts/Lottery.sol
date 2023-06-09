@@ -91,6 +91,8 @@ contract Lottery is Ownable {
         paymentToken.mint(msg.sender, _amount);
     }
 
+    /// @notice Places a bet
+    /// @dev charges in Lottery Token (ERC20) for the bet..
     function bet() public whenBetsOpen {
         require(
             paymentToken.balanceOf(msg.sender) >= betFee + betPrice,
@@ -99,6 +101,25 @@ contract Lottery is Ownable {
         ownerPool += betFee;
         prizePool += betPrice;
         _slots.push(msg.sender);
+
+        paymentToken.approve(address(this), betFee + betPrice);
+        paymentToken.transferFrom(msg.sender, address(this), betFee + betPrice);
+        //paymentToken.transfer(address(this), betPrice + betFee);
+    }
+
+    /// @notice Places multiple bets
+    /// @param _bets is the amount of times to call the bet function
+    /// @dev balance is checked to determine if caller can perform all _bets.
+    function betMany(uint _bets) external whenBetsOpen {
+        uint cost = betFee + betPrice;
+
+        require(
+            paymentToken.balanceOf(msg.sender) >= _bets * cost,
+            "Insufficient balance to place that many bets"
+        );
+        for (uint i = 0; i < _bets; i++) {
+            bet();
+        }
     }
 
     function getArraySize() public view onlyOwner returns (uint256) {
