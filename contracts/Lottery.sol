@@ -153,6 +153,25 @@ contract Lottery is Ownable {
         paymentToken.transfer(msg.sender, prize);
     }
 
+    /// @notice withdraws owner fees from contract
+    function ownerWithdraw() external onlyOwner {
+        require(ownerPool > 0, "currently no funds in pool");
+        uint256 totalFees = ownerPool;
+        ownerPool = 0;
+        paymentToken.transfer(msg.sender, totalFees);
+    }
+
+    function swapForEth() external {
+        require(paymentToken.balanceOf(msg.sender) > 0, "no tokens to swap");
+        uint256 balance = paymentToken.balanceOf(msg.sender);
+        uint256 refundAmount = balance / tokenRatio;
+
+        paymentToken.burnFrom(msg.sender, balance);
+
+        (bool success, ) = msg.sender.call{value: refundAmount}("");
+        require(success, "Payment failed.");
+    }
+
     /// @notice returns random number
     /// @dev impletents pseudorandom function. would be better to use chainlink vrf
     function randomNumber() internal view returns (uint256) {

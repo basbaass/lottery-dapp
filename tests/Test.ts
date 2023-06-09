@@ -228,36 +228,57 @@ describe("Lottery Dapp", async () => {
           "Only a winner can withdraw funds."
         );
       });
-    });
-    it("ownerWithdraw", async () => {});
-    it("returnTokens", async () => {});
-  });
-});
+      describe("Owner withdraw", () => {
+        it("allows the owner to withdraw", async () => {
+          let balanceBeforeWithdrawl = await token.balanceOf(
+            accounts[0].address
+          );
+          let currentFees = await contract.ownerPool();
+          await contract.ownerWithdraw();
+          expect(await token.balanceOf(accounts[0].address)).to.be.eq(
+            balanceBeforeWithdrawl.add(currentFees)
+          );
+        });
 
-describe("Outside Of Betting Window", function () {
-  it("Players must buy an ERC20 with ETH", async () => {
-    throw new Error("Not implemented");
-  });
-  it("Players pay ERC20 to bet", async () => {
-    it("Only possible before block timestamp met", async () => {
-      throw new Error("Not implemented");
-    });
-  });
-  it("Anyone can roll the lottery", async () => {
-    it("Only after block timestamp target is met", async () => {});
-    it("Randomness from RANDAO", async () => {});
-  });
-});
+        it("restricts withdrawl to owner", async () => {
+          let lottery = await contract.connect(accounts[1]);
 
-describe("During Betting Window", function () {});
-describe("After Completion of Lottery", function () {
-  it("Winner receives the pooled ERC20 minus fee", async () => {
-    throw new Error("Not implemented");
-  });
-  it("Owner can withdraw fees and restart lottery", async () => {
-    throw new Error("Not implemented");
-  });
-  it("Players can burn ERC20 tokens and redeem ETH", async () => {
-    throw new Error("Not implemented");
+          await expect(lottery.ownerWithdraw()).to.be.revertedWith(
+            "Ownable: caller is not the owner"
+          );
+        });
+
+        it("resets state variable", async () => {
+          await contract.ownerWithdraw();
+
+          expect(await contract.ownerPool()).to.be.eq(0);
+        });
+      });
+    });
+
+    describe("swapForEth", () => {
+      beforeEach(async () => {
+        await contract
+          .connect(accounts[0])
+          .purchaseTokens({ value: ethers.utils.parseEther("10") });
+
+        await token
+          .connect(accounts[0])
+          .approve(contract.address, ethers.constants.MaxUint256);
+      });
+      it("returnTokens", async () => {
+        let balance = await ethers.provider.getBalance(contract.address);
+        await contract.swapForEth();
+        let balanceAFTER = await ethers.provider.getBalance(contract.address);
+
+        expect(balanceAFTER).to.be.eq(0);
+      });
+
+      it("fails if you do not have tokens", async () => {
+        await expect(
+          contract.connect(accounts[1]).swapForEth()
+        ).to.be.revertedWith("no tokens to swap");
+      });
+    });
   });
 });
